@@ -8,3 +8,5 @@
 ## Learnings
 
 <!-- Append new learnings below. Each entry is something lasting about the project. -->
+
+📌 Team update (2026-02-13): v1 scope boundaries established — handles C#, project files, Markdown, JSON/YAML config, shell scripts; excludes binary/multimedia, Jupyter notebooks, complex migrations; multi-commit PR strategy by category enables partial cherry-picking — decided by Kamala

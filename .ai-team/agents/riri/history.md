@@ -8,3 +8,5 @@
 ## Learnings
 
 <!-- Append new learnings below. Each entry is something lasting about the project. -->
+
+📌 Team update (2026-02-13): Copilot SDK for .NET will be used with custom SKILL.md prompts for content transformation and analysis; convention-based workshop detection with optional .workshop.yml manifest for edge cases — decided by Kamala
