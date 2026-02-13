@@ -252,3 +252,15 @@ public record CopilotContext(
 - Zero breaking changes — existing label/assignment triggers unchanged
 - Configuration additive — new `release_notes` and `dependabot` sections in `.github/workshop-manager.yml`
 **Work Estimate:** Phase 5 — 13 items, ~30 story points (WI-26 to WI-38)
+
+### 2026-02-14: IssueParser regex bug — multi-word version strings
+**By:** Kate (Tester)
+**Status:** Documented (not fixed — outside Tester scope)
+**What:** Version extraction regex patterns fail on multi-word values. Example: `**To:** .NET 9` captures only `.NET` instead of `.NET 9`.
+**Affected patterns:**
+- `BodyToFieldPattern`: `\*\*To:\*\*\s*v?(\S+)` 
+- `BodyFromFieldPattern`: `\*\*From:\*\*\s*v?(\S+)`
+- `TitleFromToPattern`: `(?:upgrade|update|migrate)\s+from\s+v?(\S+)\s+to\s+v?(\S+)`
+**Why:** `\S+` captures only the first non-whitespace token. Multi-word technology names (e.g., `.NET 9`, `Node.js 20`) are truncated.
+**Impact:** All fixtures with `.NET X` or similar multi-word versions return truncated strings. Unit tests document this behavior with `// BUG:` comments, asserting actual vs. expected per team protocol.
+**Recommendation:** Change capture group to `(\S+(?:\s+\S+)?)` or use anchored pattern like `(.+?)` to capture full version string.

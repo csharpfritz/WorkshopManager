@@ -16,3 +16,5 @@
 📌 Team update (2026-02-14): Release Notes and Dependabot Integration extends existing architecture — Trigger Classifier routes upgrade intent; both new triggers call Upgrade Processor; no changes to core Copilot integration or content analysis workflows; Phase 5 feature (WI-26 to WI-38) — decided by Kamala
 
 📌 WI-04/05 shipped (2026-02-14): Shared models and interfaces complete — UpgradeIntent, CopilotResponse, CopilotContext records; IIssueParser, ICopilotClient interfaces; IssueParser regex implementation with GeneratedRegex source generators; StubCopilotClient pass-through; bot name detection from config; technology/scope/release notes parsing — decided by Riri
+
+📌 Team update (2026-02-14): IssueParser regex bug documented — multi-word version strings (e.g., `.NET 9`) captured as single token (e.g., `.NET`); affects `BodyToFieldPattern`, `BodyFromFieldPattern`, `TitleFromToPattern`; recommendation to use `(\S+(?:\s+\S+)?)` or anchored pattern; fixtures document actual vs. expected behavior per protocol — documented by Kate
