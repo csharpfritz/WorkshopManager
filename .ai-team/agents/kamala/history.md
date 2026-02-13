@@ -65,3 +65,48 @@ Both release notes and Dependabot integrate into the existing dual-trigger + wor
 - GitHub App webhook events expanded to include `pull_request` for Dependabot detection
 
 **Work items:** 13 new items (WI-26 to WI-38) split across phases 5 and beyond, estimated at 30 story points total
+
+### 2026-02-14: Workshop Structure Detection Design (WI-08)
+
+**Key Files:**
+- `docs/design/workshop-structure.md` — Full design document for implementers
+- `.ai-team/decisions/inbox/kamala-workshop-structure-design.md` — Decision record
+
+**Architecture Decisions:**
+1. **Two-strategy detection** — Manifest-based (`.workshop.yml`) checked first, convention-based as fallback. Hybrid strategy when manifest is partial.
+2. **Remote-first analysis** — `IWorkshopAnalyzer.AnalyzeAsync` takes `repoFullName` + `commitSha`, not local path. All file access via `IRepositoryContentProvider` abstraction backed by GitHub Git Tree API.
+3. **Content classification model** — `WorkshopStructure` (top-level) contains `ContentItem` entries, each classified as `CodeSample`, `Documentation`, `ProjectFile`, `Configuration`, or `Asset`. Items carry `VersionReference` and `DependencyReference` for downstream transformation.
+4. **Convention detection ordered by specificity** — Technology detection: `.csproj` → `package.json` → `pyproject.toml` → `go.mod` → `pom.xml`. First match wins for primary technology.
+5. **IRepositoryContentProvider abstraction** — Decouples analyzer from Octokit, enables `InMemoryContentProvider` for testing.
+6. **Manifest schema** — `.workshop.yml` with all-optional fields: `name`, `technology` (primary + version), `structure` (modules, shared, exclude). Gaps filled by convention detection.
+
+**Routing:**
+- Riri: Implements `WorkshopAnalyzer` (WI-09), `ManifestParser` (WI-10)
+- America: Implements `IRepositoryContentProvider` backed by Octokit
+- Kate: Tests with `InMemoryContentProvider` fixture trees (WI-13)
+
+**Design rationale for remote-first:** Phase 2 reads repo contents via GitHub API. Pinning to commit SHA prevents TOCTOU issues. Aligns with PR generation which is also API-based. If WI-18 (build validation) needs local filesystem, that's a separate service with its own interface.
+
+### 2026-02-14: WI-11 — Copilot Skill Prompts Designed
+
+**Deliverables:**
+- Four skill prompt templates in `src/WorkshopManager.Api/Skills/`:
+  - `upgrade-code-sample.md` — Code transformation preserving pedagogical intent
+  - `upgrade-documentation.md` — Documentation transformation preserving teaching flow
+  - `upgrade-project-file.md` — Project/config file precise version upgrades
+  - `analyze-breaking-changes.md` — Breaking change analysis returning structured JSON
+- `ISkillResolver` interface + `SkillResolver` implementation in Services/
+- `ContentItemType` enum in Models/ (CodeSample, Documentation, ProjectFile, Configuration)
+- Decision document: `.ai-team/decisions/inbox/kamala-copilot-skills-design.md`
+
+**Key Design Decisions:**
+1. **Four placeholders** — `{{technology}}`, `{{fromVersion}}`, `{{toVersion}}`, `{{releaseNotesUrl}}` map directly to existing `CopilotContext` and `UpgradeIntent` fields. No new data types needed.
+2. **ICopilotClient unchanged** — The `skillPromptPath` parameter already accommodates the skill design. Real client loads template, hydrates placeholders, sends to API. Zero breaking changes.
+3. **Skill routing via ISkillResolver** — Maps `(ContentItemType, UpgradeScope)` to skill file path. `Incremental` scope routes to analysis skill regardless of content type. Configuration reuses project-file skill.
+4. **REVIEW markers in output** — Skills instruct Copilot to insert `// REVIEW:` or `<!-- REVIEW: -->` for items needing human attention, integrating with PR review workflow.
+5. **Skills as files, not embedded** — Markdown files on disk, not embedded resources or hardcoded strings. Easier iteration, editable without recompilation.
+
+**Impact on other agents:**
+- Riri: Consumes `ISkillResolver` in WI-12 to route content to skills
+- Kate: Should test `SkillResolver` routing (4 content types × 4 scopes = 16 combinations)
+- America: No impact — skills internal to Copilot pipeline
