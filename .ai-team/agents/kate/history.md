@@ -11,4 +11,10 @@
 
 📌 Team update (2026-02-13): v1 scope boundaries established — handles C#, project files, Markdown, JSON/YAML config, shell scripts; excludes binary/multimedia, Jupyter notebooks, complex migrations; multi-commit PR strategy by category enables partial cherry-picking — decided by Kamala
 
-📌 Team update (2026-02-14): Release Notes and Dependabot Integration added to v1.1 — 13 new work items (WI-26 to WI-38) spanning release notes parsing (5 items), Dependabot detection and companion PR creation (7 items), and testing/configuration (3 items). Phase 5 sequencing, ~30 story points. Both features fit within existing test coverage model — decided by Kamala
+📌 Team update (2026-02-13): GitHub App configuration requirements established — permissions for issues, contents, pull_requests, metadata; webhook events for issues, issue_comment, label; OAuth installation flow required; webhook secret in environment variable only — decided by Kamala
+
+📌 Team update (2026-02-13): Configuration via Options Pattern — GitHubAppOptions and CopilotSettings with [Required] validation and ValidateOnStart(); secrets in environment variables only; configuration additive for Phase 5 features — decided by Kamala
+
+📌 Team update (2026-02-13): Webhook error handling strategy — log and comment on issue for failures; retry transient failures only (network, rate limit); parsing failures = no retry; user feedback balanced with system reliability — decided by Kamala
+
+📌 Team update (2026-02-14): Release Notes and Dependabot Integration architecture — Trigger Classifier routes to issue parser, release notes parser, or Dependabot detector; both new triggers feed into Upgrade Processor with inferred intent; zero breaking changes to core workflow; GitHub App webhook expanded to include pull_request event — decided by Kamala

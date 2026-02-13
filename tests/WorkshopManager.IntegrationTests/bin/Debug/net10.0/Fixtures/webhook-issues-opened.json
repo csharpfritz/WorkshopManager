@@ -1,0 +1,45 @@
+{
+  "action": "opened",
+  "issue": {
+    "id": 2012345680,
+    "node_id": "I_kwDOABCDEF12345680",
+    "number": 44,
+    "title": "Add new exercise on dependency injection",
+    "state": "open",
+    "body": "We should add a new module covering DI patterns in ASP.NET Core.\n\n## Proposed Content\n- Constructor injection basics\n- Scoped vs Singleton vs Transient\n- Integration testing with DI overrides",
+    "user": {
+      "login": "contributor123",
+      "id": 99001,
+      "node_id": "MDQ6VXNlcjk5MDAx",
+      "type": "User"
+    },
+    "labels": [],
+    "assignees": [],
+    "created_at": "2026-02-13T12:00:00Z",
+    "updated_at": "2026-02-13T12:00:00Z"
+  },
+  "repository": {
+    "id": 100200300,
+    "node_id": "R_kgDOABCDEF",
+    "name": "dotnet-workshop",
+    "full_name": "csharpfritz/dotnet-workshop",
+    "private": false,
+    "owner": {
+      "login": "csharpfritz",
+      "id": 78577,
+      "node_id": "MDQ6VXNlcjc4NTc3",
+      "type": "User"
+    },
+    "default_branch": "main"
+  },
+  "sender": {
+    "login": "contributor123",
+    "id": 99001,
+    "node_id": "MDQ6VXNlcjk5MDAx",
+    "type": "User"
+  },
+  "installation": {
+    "id": 50000001,
+    "node_id": "MDIzOkludGVncmF0aW9uNTAwMDAwMDE="
+  }
+}

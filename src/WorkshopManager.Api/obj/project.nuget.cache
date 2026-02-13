@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "dgSpecHash": "v4m2Jrbilbk=",
+  "success": true,
+  "projectFilePath": "C:\\dev\\WorkshopManager\\src\\WorkshopManager.Api\\WorkshopManager.Api.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\jeffr\\.nuget\\packages\\macross.json.extensions\\3.0.0\\macross.json.extensions.3.0.0.nupkg.sha512",
+    "C:\\Users\\jeffr\\.nuget\\packages\\microsoft.extensions.options.dataannotations\\10.0.3\\microsoft.extensions.options.dataannotations.10.0.3.nupkg.sha512",
+    "C:\\Users\\jeffr\\.nuget\\packages\\octokit.webhooks\\3.2.1\\octokit.webhooks.3.2.1.nupkg.sha512",
+    "C:\\Users\\jeffr\\.nuget\\packages\\octokit.webhooks.aspnetcore\\3.2.1\\octokit.webhooks.aspnetcore.3.2.1.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1510",
+      "level": "Warning",
+      "message": "PackageReference Microsoft.Extensions.Options.DataAnnotations will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.",
+      "projectPath": "C:\\dev\\WorkshopManager\\src\\WorkshopManager.Api\\WorkshopManager.Api.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\dev\\WorkshopManager\\src\\WorkshopManager.Api\\WorkshopManager.Api.csproj",
+      "libraryId": "Microsoft.Extensions.Options.DataAnnotations",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "action": "labeled",
+  "issue": {
+    "id": "not-a-number",
+    "title": null,
+    "body": 12345
+  },
+  "repository": "should-be-an-object",
+  "sender": {
+    "login": 999
+  }
+}

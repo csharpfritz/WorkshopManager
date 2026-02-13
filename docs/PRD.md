@@ -589,13 +589,13 @@ These items require Jeffrey's input before finalizing:
 
 | # | Question | Options | Impact |
 |---|----------|---------|--------|
-| 1 | **Default trigger mechanism?** | Label-first (triage) vs. assignment-first (direct action) | UX for workshop authors |
-| 2 | **Copilot model preference?** | Claude Sonnet 4.5 vs. GPT-5 vs. configurable | Cost, quality, latency tradeoffs |
-| 3 | **Build validation requirement?** | Always build before PR vs. optional vs. skip | Time to PR, confidence level |
-| 4 | **Multi-language workshop support?** | .NET-first vs. polyglot from start | Development scope |
-| 5 | **Hosting preference?** | Azure App Service vs. Azure Functions vs. Container Apps | Cost, ops model |
-| 6 | **Failure notification channel?** | Issue comment only vs. also email/Teams | Author notification preferences |
-| 7 | **Workshop manifest format?** | Custom `.workshop.yml` vs. existing convention (e.g., `devcontainer.json`) | Compatibility with existing tooling |
+| 1 | **Default trigger mechanism?** | assignment-first | UX for workshop authors |
+| 2 | **Copilot model preference?** | configurable with a default of Claude Sonnet 4.5 | Cost, quality, latency tradeoffs |
+| 3 | **Build validation requirement?** | Always build before PR | Time to PR, confidence level |
+| 4 | **Multi-language workshop support?** | .NET-first - let's prove this works and then roll out to other tech stacks | Development scope |
+| 5 | **Hosting preference?** | Container Apps | Cost, ops model |
+| 6 | **Failure notification channel?** | Issue comment only - allow GitHub notifications to manage further notifications beyond that | Author notification preferences |
+| 7 | **Workshop manifest format?** | Custom `.workshop.yml` | Compatibility with existing tooling |
 
 ---
 

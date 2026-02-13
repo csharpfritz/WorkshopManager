@@ -11,4 +11,8 @@
 
 📌 Team update (2026-02-13): Webhook handling will use Octokit.Webhooks.AspNetCore for signature validation and event routing; PRs will use multi-commit strategy by category for easier review; dual trigger mechanism supports both label and assignment workflows — decided by Kamala
 
-📌 Team update (2026-02-14): Release Notes and Dependabot Integration added to v1.1 — app now detects release notes URLs in issues (fetches and parses to infer scope) and detects Dependabot PRs to create companion PRs with workshop updates. GitHub App webhook expanded to include `pull_request` event. Trigger Classifier routes to appropriate handler. Configuration expanded with `release_notes` and `dependabot` sections in `.github/workshop-manager.yml` — decided by Kamala
+📌 Team update (2026-02-13): Single-project architecture for Phase 1 (WorkshopManager.Api only); UpgradeIntent immutable record model with complete set of fields; IIssueParser interface established for async parsing with regex + keyword extraction strategy — decided by Kamala
+
+📌 Team update (2026-02-13): Parallel development mocking strategy enabled — webhook endpoint, Copilot integration, and test infrastructure can all proceed with mocks against agreed-upon interfaces; integration happens after all streams land — decided by Kamala
+
+📌 Team update (2026-02-14): CopilotContext and CopilotResponse fields aligned with design review spec (FromVersion/ToVersion, TokensUsed, RepositoryFullName/FilePath); Octokit.Webhooks uses ValueTask not Task for processor overrides; UpgradeIntent.Empty sentinel added — decided by America, Riri
