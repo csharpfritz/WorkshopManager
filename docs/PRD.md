@@ -1,8 +1,8 @@
 # WorkshopManager Product Requirements Document
 
-> **Status:** Draft v1.0  
+> **Status:** Draft v1.1  
 > **Author:** Kamala (Lead)  
-> **Date:** 2026-02-13  
+> **Date:** 2026-02-13 (updated 2026-02-14)  
 > **Owner:** Jeffrey T. Fritz (@csharpfritz)
 
 ---
@@ -46,6 +46,8 @@ Manual upgrades of workshop content are tedious and error-prone. Authors must up
 | US-6 | Workshop author | Have the app detect my workshop structure automatically | I don't have to configure everything manually |
 | US-7 | Repo maintainer | Assign issues directly to the app | The app starts working immediately |
 | US-8 | Repo maintainer | Use a label to triage before assignment | I can batch-review upgrade requests before triggering work |
+| US-9 | Workshop author | Provide a link to release notes in an issue | The app parses it to discover what changed and updates content accordingly |
+| US-10 | Workshop author | Have Dependabot dependency updates trigger workshop content updates | Code and prose stay in sync when dependencies are bumped |
 
 ---
 
@@ -58,21 +60,21 @@ Manual upgrades of workshop content are tedious and error-prone. Authors must up
 │                        WorkshopManager GitHub App                       │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│  ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐  │
-│  │  Webhook Handler │───▶│   Issue Parser   │───▶│  Work Scheduler  │  │
-│  │  (ASP.NET Core)  │    │                  │    │                  │  │
-│  └──────────────────┘    └──────────────────┘    └──────────────────┘  │
-│           │                                               │             │
-│           ▼                                               ▼             │
-│  ┌──────────────────┐                          ┌──────────────────────┐ │
-│  │ GitHub API Client│◀────────────────────────▶│   Upgrade Processor  │ │
-│  │    (Octokit)     │                          │                      │ │
-│  └──────────────────┘                          ├──────────────────────┤ │
-│                                                │ Content Analyzer     │ │
-│                                                │ Copilot Integrator   │ │
-│                                                │ Change Applier       │ │
-│                                                │ PR Generator         │ │
-│                                                └──────────────────────┘ │
+│  ┌──────────────────┐    ┌─────────────────────┐   ┌──────────────────┐│
+│  │  Webhook Handler │───▶│  Trigger Classifier │──▶│  Work Scheduler  ││
+│  │  (ASP.NET Core)  │    │ (Issue/PR/ReleaseNote)  │                  ││
+│  └──────────────────┘    └─────────────────────┘   └──────────────────┘│
+│           │                       │                         │          │
+│           ▼                       ▼                         ▼          │
+│  ┌──────────────────┐   ┌─────────────────┐   ┌──────────────────────┐ │
+│  │ GitHub API Client│   │ Release Notes   │   │   Upgrade Processor  │ │
+│  │    (Octokit)     │   │  Fetcher/Parser │   │                      │ │
+│  └──────────────────┘   └─────────────────┘   ├──────────────────────┤ │
+│           ▲                                    │ Content Analyzer     │ │
+│           │             ┌─────────────────┐   │ Copilot Integrator   │ │
+│           └────────────▶│ Dependabot PR    │──▶│ Change Applier       │ │
+│                         │  Detector        │   │ PR Generator         │ │
+│                         └─────────────────┘   └──────────────────────┘ │
 │                                                          │              │
 │                                                          ▼              │
 │                                                ┌──────────────────────┐ │
@@ -87,7 +89,10 @@ Manual upgrades of workshop content are tedious and error-prone. Authors must up
 | Component | Responsibility |
 |-----------|----------------|
 | **Webhook Handler** | Receives GitHub webhook events, validates signatures, routes to appropriate handlers |
+| **Trigger Classifier** | Determines trigger type (issue, release notes link, Dependabot PR) and routes to appropriate handler |
 | **Issue Parser** | Extracts upgrade intent from issue title/body (source version, target version, scope) |
+| **Release Notes Fetcher/Parser** | Fetches release notes from URL, parses for version/API changes to infer upgrade intent |
+| **Dependabot PR Detector** | Detects Dependabot-opened PRs, extracts package/version information |
 | **Work Scheduler** | Manages job queue, ensures idempotency, handles retries |
 | **GitHub API Client** | Authenticated operations: read repo content, create branches, commit files, open PRs |
 | **Upgrade Processor** | Orchestrates the full upgrade workflow |
@@ -112,29 +117,54 @@ Manual upgrades of workshop content are tedious and error-prone. Authors must up
 
 ### Trigger Mechanisms
 
-WorkshopManager supports two trigger mechanisms:
+WorkshopManager supports four trigger mechanisms:
 
 #### 1. Label-Based Trigger (Triage Flow)
 - **Label:** `workshop-upgrade`
 - **Behavior:** App comments on issue with analysis summary, awaits assignment
 - **Use case:** Owner wants to review before committing to work
+- **Scope:** Issues only
 
 #### 2. Assignment-Based Trigger (Direct Flow)
 - **Assignee:** `workshopmanager[bot]` (the app's bot user)
 - **Behavior:** App immediately begins processing the upgrade
 - **Use case:** Owner is ready for the app to do the work
+- **Scope:** Issues only
+
+#### 3. Release Notes Link Trigger (Content Discovery Flow)
+- **Detection:** Issue body contains a URL to release notes (e.g., https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
+- **Behavior:** App fetches and parses release notes to understand what changed, infers upgrade intent, proceeds with upgrade workflow
+- **Use case:** Author provides a curated link to what changed in a new release; app automatically discovers impact on workshop
+- **Scope:** Issues with label `workshop-upgrade` or direct assignment
+- **Supported sources:** Official release notes pages (GitHub Releases, Microsoft, Python, Node, etc.)
+
+#### 4. Dependabot Integration Trigger (Sync Flow)
+- **Detection:** Dependabot opens a PR for a dependency update (detectable via `actor: dependabot[bot]` in pull_request webhook)
+- **Behavior:** App creates a companion issue/PR analyzing the dependency change and proposing workshop content updates to keep pace with code changes
+- **Use case:** Dependabot bumps a NuGet/npm/Python dependency; WorkshopManager ensures instructional content stays in sync
+- **Scope:** Pull requests only, when Dependabot is the PR author
+- **Configuration:** Enable/disable per repository
 
 ### Workflow State Machine
 
 ```
+Issue Flow (Triggers 1-3):
 ┌─────────┐     label added      ┌───────────┐
 │  Open   │─────────────────────▶│  Triaged  │
 │  Issue  │                      │           │
 └─────────┘                      └───────────┘
      │                                  │
      │ assigned to bot                  │ assigned to bot
+     │                                  │ OR release notes URL found
      │                                  │
      ▼                                  ▼
+┌──────────────────┐         ┌──────────────────────┐
+│ Parse Intent     │         │ Fetch Release Notes  │
+│ (title/body)     │         │ & Extract Intent     │
+└──────────────────┘         └──────────────────────┘
+     │                                  │
+     └──────────────┬───────────────────┘
+                    ▼
 ┌─────────────────────────────────────────────┐
 │                Processing                    │
 ├─────────────────────────────────────────────┤
@@ -152,6 +182,27 @@ WorkshopManager supports two trigger mechanisms:
 │ (links to   │                  │ (comment    │
 │  issue)     │                  │  explains)  │
 └─────────────┘                  └─────────────┘
+
+Dependabot Flow (Trigger 4):
+┌──────────────────┐
+│ Dependabot PR    │
+│ Opened           │
+└──────────────────┘
+     │
+     ▼
+┌──────────────────────────────┐
+│ Extract Package/Version Info │
+└──────────────────────────────┘
+     │
+     ▼
+┌─────────────────────────────────────────────┐
+│        Companion Update Processing           │
+├─────────────────────────────────────────────┤
+│ 1. Analyze Dependabot PR changes            │
+│ 2. Discover affected workshop content       │
+│ 3. Propose instructional updates            │
+│ 4. Create companion PR (or comment)         │
+└─────────────────────────────────────────────┘
 ```
 
 ### Issue Format
@@ -171,10 +222,33 @@ The app parses issue titles and bodies for upgrade intent:
 **To:** .NET 9
 **Scope:** all (or: code-only, docs-only, specific-modules)
 
+### Release Notes
+https://dotnet.microsoft.com/en-us/download/dotnet/9.0
+
 ### Notes
 - Focus on minimal API changes
 - Update NuGet packages to latest stable
 ```
+
+### Release Notes Link Format
+
+When an issue contains a link to release notes, the app extracts it from the body and parses it:
+
+```markdown
+## Upgrade Request
+
+Found release notes for the new version:
+https://dotnet.microsoft.com/en-us/download/dotnet/9.0
+
+The app will analyze the release notes to understand what changed and propose updates.
+```
+
+Supported release notes sources:
+- **Microsoft .NET:** https://dotnet.microsoft.com/en-us/download/dotnet/X.X
+- **GitHub Releases:** Any repository with standard GitHub release format
+- **Python:** https://docs.python.org/3/whatsnew/
+- **Node.js:** https://nodejs.org/en/blog/release/vX.X.X/
+- **Other frameworks:** Common release note URL patterns
 
 ---
 
@@ -424,6 +498,22 @@ pull_request:
   labels:
     - "needs-review"
 
+# Release notes parsing
+release_notes:
+  enabled: true
+  auto_detect_version: true
+  api_analysis: true
+
+# Dependabot integration
+dependabot:
+  enabled: true
+  create_companion_pr: true
+  auto_merge_enabled: false
+  triggers:
+    - ".NET"
+    - "Node.js"
+    - "Python"
+
 # Copilot settings
 copilot:
   model: "claude-sonnet-4.5"  # or "gpt-5"
@@ -439,7 +529,7 @@ Configured in the GitHub App manifest:
 
 | Setting | Value |
 |---------|-------|
-| **Webhook events** | `issues`, `issue_comment` |
+| **Webhook events** | `issues`, `issue_comment`, `pull_request` |
 | **Permissions** | `contents: write`, `issues: write`, `pull_requests: write` |
 | **User-to-server tokens** | Required for Copilot SDK access |
 
@@ -556,14 +646,32 @@ These items require Jeffrey's input before finalizing:
 | WI-24 | Documentation for workshop authors | Kamala | WI-22 | 2 pts |
 | WI-25 | Final QA pass | Kate | WI-22 | 3 pts |
 
+### Phase 5: Release Notes & Dependabot Integration (Sprint 5-6)
+
+| ID | Work Item | Assignee | Dependencies | Estimate |
+|----|-----------|----------|--------------|----------|
+| WI-26 | Design release notes fetcher and parser | Kamala | WI-03 | 2 pts |
+| WI-27 | Implement release notes HTTP fetcher | America | WI-26 | 2 pts |
+| WI-28 | Implement release notes parser (extract version/API changes) | Riri | WI-26 | 4 pts |
+| WI-29 | Integrate release notes analysis into upgrade workflow | Riri | WI-28, WI-12 | 3 pts |
+| WI-30 | Update trigger classifier to detect release notes URLs | America | WI-26 | 2 pts |
+| WI-31 | Design Dependabot PR detection strategy | Kamala | — | 1 pt |
+| WI-32 | Implement Dependabot PR detector | America | WI-31 | 2 pts |
+| WI-33 | Extract package/version info from Dependabot PR | Riri | WI-32 | 2 pts |
+| WI-34 | Implement companion PR generation for Dependabot updates | America | WI-33, WI-17 | 4 pts |
+| WI-35 | Add release notes and Dependabot config options | America | — | 2 pts |
+| WI-36 | Write integration tests for release notes trigger | Kate | WI-29 | 3 pts |
+| WI-37 | Write integration tests for Dependabot trigger | Kate | WI-34 | 3 pts |
+| WI-38 | Update GitHub App manifest for pull_request events | America | WI-32 | 1 pt |
+
 ### Team Allocation Summary
 
 | Team Member | Primary Focus | Work Items |
 |-------------|---------------|------------|
-| **Kamala** | Architecture, design, code review | WI-03, WI-08, WI-11, WI-14, WI-22, WI-23, WI-24 |
-| **America** | GitHub App surfaces, webhooks, PR generation | WI-01, WI-02, WI-17, WI-20, WI-21 |
-| **Riri** | Backend services, Copilot integration, content analysis | WI-04, WI-05, WI-09, WI-10, WI-12, WI-15, WI-16, WI-18 |
-| **Kate** | Testing, QA, CI setup | WI-06, WI-07, WI-13, WI-19, WI-25 |
+| **Kamala** | Architecture, design, code review | WI-03, WI-08, WI-11, WI-14, WI-22, WI-23, WI-24, WI-26, WI-31 |
+| **America** | GitHub App surfaces, webhooks, PR generation | WI-01, WI-02, WI-17, WI-20, WI-21, WI-27, WI-30, WI-32, WI-34, WI-35, WI-38 |
+| **Riri** | Backend services, Copilot integration, content analysis | WI-04, WI-05, WI-09, WI-10, WI-12, WI-15, WI-16, WI-18, WI-28, WI-29, WI-33 |
+| **Kate** | Testing, QA, CI setup | WI-06, WI-07, WI-13, WI-19, WI-25, WI-36, WI-37 |
 
 ---
 
@@ -575,7 +683,10 @@ These items require Jeffrey's input before finalizing:
 | **Upgrade** | The process of updating workshop content from one technology version to another |
 | **Module** | A logical section of a workshop (e.g., "Module 1: Getting Started") |
 | **Prose** | Non-code instructional content (typically Markdown) |
-| **Trigger** | An event that causes the app to start processing (label or assignment) |
+| **Trigger** | An event that causes the app to start processing (label, assignment, release notes URL, or Dependabot PR) |
+| **Release Notes** | Official documentation of changes in a new software version, used to infer what needs updating |
+| **Dependabot** | GitHub's automated dependency update bot that suggests package version upgrades |
+| **Companion PR** | A PR created by WorkshopManager alongside a Dependabot PR to keep workshop content in sync |
 
 ## Appendix B: Related Resources
 
