@@ -31,3 +31,14 @@
 **By:** Kamala
 **What:** v1 handles: C# code, project files, Markdown, JSON/YAML config, shell scripts. v1 does NOT handle: binary files, multimedia, Jupyter notebooks, complex migrations.
 **Why:** Tight scope for v1 ensures we ship something useful quickly. Binary/multimedia files have no viable upgrade path. Notebooks have complex structure requiring separate investment. Scope can expand in v2.
+
+### 2026-02-14: Release Notes and Dependabot Integration
+**By:** Kamala
+**What:** WorkshopManager will support two new trigger/discovery mechanisms: (1) Release Notes Link Trigger — fetch and parse release notes URLs to infer upgrade scope and proceed with standard upgrade workflow; (2) Dependabot Integration — detect Dependabot PRs and create companion PRs updating workshop content to stay in sync with dependency changes.
+**Why:** Release notes trigger reduces friction (authors paste a link, app figures out what changed) and aligns with existing issue-based trigger model. Dependabot integration keeps workshop prose in sync with code dependency versions — without it, readers see instructions for npm v18 while code uses npm v20. Both features fit cleanly into existing architecture: Trigger Classifier routes to appropriate handler, both ultimately call Upgrade Processor with inferred intent. Zero breaking changes to existing workflows. GitHub App webhook expanded to include `pull_request` event. Configuration is additive.
+**Architectural Impact:**
+- New components: Trigger Classifier, Release Notes Fetcher/Parser, Dependabot PR Detector
+- Minimal — fits into existing dual-trigger + Upgrade Processor architecture
+- Zero breaking changes — existing label/assignment triggers unchanged
+- Configuration additive — new `release_notes` and `dependabot` sections in `.github/workshop-manager.yml`
+**Work Estimate:** Phase 5 — 13 items, ~30 story points (WI-26 to WI-38)
