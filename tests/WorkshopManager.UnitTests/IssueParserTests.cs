@@ -179,11 +179,9 @@ public class IssueParserTests
 
         var intent = await _parser.ParseAsync(evt);
 
-        // NOTE: The title "Upgrade from .NET 8 to .NET 9" doesn't match the from-to regex
-        // because ".NET" is captured as a single token and "8" doesn't match "to".
-        // The parser falls through to defaults for this fixture's body (unstructured).
-        intent.SourceVersion.Should().Be("current");
-        intent.TargetVersion.Should().Be("latest");
+        // FIXED: Regex now correctly captures multi-word versions from title
+        intent.SourceVersion.Should().Be(".NET 8");
+        intent.TargetVersion.Should().Be(".NET 9");
         intent.Technology.Should().Be(".NET");
         intent.IssueNumber.Should().Be(10);
         intent.RepoFullName.Should().Be("csharpfritz/dotnet-workshop");
@@ -242,9 +240,9 @@ public class IssueParserTests
 
         var intent = await _parser.ParseAsync(evt);
 
-        // BUG: Regex (\S+) captures ".NET" from "**To:** .NET 9" instead of the full version
-        intent.TargetVersion.Should().Be(".NET");
-        intent.SourceVersion.Should().Be(".NET");
+        // FIXED: Regex now correctly captures multi-word versions like ".NET 9"
+        intent.TargetVersion.Should().Be(".NET 9");
+        intent.SourceVersion.Should().Be(".NET 8");
         intent.Scope.Should().Be(UpgradeScope.Full);
         intent.ReleaseNotesUrl.Should().Contain("dotnet-9");
         intent.RequestorLogin.Should().Be("csharpfritz");
@@ -259,9 +257,9 @@ public class IssueParserTests
 
         var intent = await _parser.ParseAsync(evt);
 
-        // BUG: Regex (\S+) captures ".NET" from "**To:** .NET 9" instead of the full version
-        intent.TargetVersion.Should().Be(".NET");
-        intent.SourceVersion.Should().Be(".NET");
+        // FIXED: Regex now correctly captures multi-word versions like ".NET 9"
+        intent.TargetVersion.Should().Be(".NET 9");
+        intent.SourceVersion.Should().Be(".NET 8");
         intent.Scope.Should().Be(UpgradeScope.Full);
     }
 

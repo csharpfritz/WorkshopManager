@@ -37,13 +37,12 @@ builder.Services.AddSingleton<ICopilotClient, CopilotClient>();
 
 builder.Services.AddSingleton<WebhookEventProcessor, WorkshopWebhookEventProcessor>();
 
-// Workshop Structure Analysis (WI-09, WI-10)
+// Workshop Structure Analysis (WI-09, WI-10, WI-11)
 builder.Services.AddSingleton<FileClassifier>();
-builder.Services.AddSingleton<IRepositoryContentProvider, InMemoryContentProvider>();
-builder.Services.AddSingleton<TechnologyDetector>();
+builder.Services.AddScoped<IRepositoryContentProvider, GitHubContentProvider>();
+builder.Services.AddScoped<TechnologyDetector>();
 builder.Services.AddSingleton<IManifestParser, ManifestParser>();
-builder.Services.AddSingleton<IWorkshopAnalyzer, WorkshopAnalyzer>();
-// Note: InMemoryContentProvider is a stub - will be replaced with GitHub API provider
+builder.Services.AddScoped<IWorkshopAnalyzer, WorkshopAnalyzer>();
 
 // Health checks
 builder.Services.AddHealthChecks();
