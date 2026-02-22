@@ -29,8 +29,21 @@ builder.Services
 
 // Services — stubs for Phase 1, real implementations swapped in later
 builder.Services.AddSingleton<IIssueParser, StubIssueParser>();
-builder.Services.AddSingleton<ICopilotClient, StubCopilotClient>();
+
+// Copilot Analysis Service (WI-12)
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<ISkillResolver, SkillResolver>();
+builder.Services.AddSingleton<ICopilotClient, CopilotClient>();
+
 builder.Services.AddSingleton<WebhookEventProcessor, WorkshopWebhookEventProcessor>();
+
+// Workshop Structure Analysis (WI-09, WI-10)
+builder.Services.AddSingleton<FileClassifier>();
+builder.Services.AddSingleton<IRepositoryContentProvider, InMemoryContentProvider>();
+builder.Services.AddSingleton<TechnologyDetector>();
+builder.Services.AddSingleton<IManifestParser, ManifestParser>();
+builder.Services.AddSingleton<IWorkshopAnalyzer, WorkshopAnalyzer>();
+// Note: InMemoryContentProvider is a stub - will be replaced with GitHub API provider
 
 // Health checks
 builder.Services.AddHealthChecks();
