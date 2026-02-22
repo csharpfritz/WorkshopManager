@@ -1,0 +1,24 @@
+name: Example Workshop
+description: A comprehensive .NET workshop
+technology:
+  primary: dotnet
+  version: "8.0"
+  additional:
+    - typescript
+structure:
+  modules:
+    - path: modules/module-01
+      code: src
+      docs: README.md
+      title: Getting Started
+      order: 1
+    - path: modules/module-02
+      code: src
+      docs: README.md
+      title: Advanced Topics
+      order: 2
+  shared:
+    - shared/common
+  exclude:
+    - temp
+    - "*.bak"

@@ -78,23 +78,23 @@ public partial class IssueParser : IIssueParser
     }
 
     // "Upgrade to X", "Update to X", "Migrate to X"
-    [GeneratedRegex(@"(?:upgrade|update|migrate)\s+to\s+v?(\S+)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(?:upgrade|update|migrate)\s+to\s+v?(.+?)(?:\s|$)", RegexOptions.IgnoreCase)]
     private static partial Regex TitleTargetPattern();
 
     // "Update from X to Y", "Upgrade from X to Y"
-    [GeneratedRegex(@"(?:upgrade|update|migrate)\s+from\s+v?(\S+)\s+to\s+v?(\S+)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(?:upgrade|update|migrate)\s+from\s+v?(.+?)\s+to\s+v?(\S+(?:\s+\d\S*)?)(?:\s|$)", RegexOptions.IgnoreCase)]
     private static partial Regex TitleFromToPattern();
 
     // Structured body field: **To:** value
-    [GeneratedRegex(@"\*\*To:\*\*\s*v?(\S+)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\*\*To:\*\*\s*v?(.+?)(?:\r?\n|$)", RegexOptions.IgnoreCase)]
     private static partial Regex BodyToFieldPattern();
 
     // Structured body field: **From:** value
-    [GeneratedRegex(@"\*\*From:\*\*\s*v?(\S+)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\*\*From:\*\*\s*v?(.+?)(?:\r?\n|$)", RegexOptions.IgnoreCase)]
     private static partial Regex BodyFromFieldPattern();
 
     // Structured body field: **Scope:** value
-    [GeneratedRegex(@"\*\*Scope:\*\*\s*(\S+)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\*\*Scope:\*\*\s*(.+?)(?:\r?\n|$)", RegexOptions.IgnoreCase)]
     private static partial Regex BodyScopeFieldPattern();
 
     // Structured body field: **Release Notes:** URL
