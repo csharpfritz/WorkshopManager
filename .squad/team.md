@@ -12,11 +12,11 @@
 
 | Name | Role | Charter | Status |
 |------|------|---------|--------|
-| Kamala | Lead | `.ai-team/agents/kamala/charter.md` | ✅ Active |
-| America | Frontend Dev | `.ai-team/agents/america/charter.md` | ✅ Active |
-| Riri | Backend Dev | `.ai-team/agents/riri/charter.md` | ✅ Active |
-| Kate | Tester | `.ai-team/agents/kate/charter.md` | ✅ Active |
-| Scribe | Session Logger | `.ai-team/agents/scribe/charter.md` | 📋 Silent |
+| Kamala | Lead | `.squad/agents/kamala/charter.md` | ✅ Active |
+| America | Frontend Dev | `.squad/agents/america/charter.md` | ✅ Active |
+| Riri | Backend Dev | `.squad/agents/riri/charter.md` | ✅ Active |
+| Kate | Tester | `.squad/agents/kate/charter.md` | ✅ Active |
+| Scribe | Session Logger | `.squad/agents/scribe/charter.md` | 📋 Silent |
 | Ralph | Work Monitor | — | 🔄 Monitor |
 
 ## Issue Source
