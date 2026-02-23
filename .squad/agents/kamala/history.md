@@ -110,3 +110,34 @@ Both release notes and Dependabot integrate into the existing dual-trigger + wor
 - Riri: Consumes `ISkillResolver` in WI-12 to route content to skills
 - Kate: Should test `SkillResolver` routing (4 content types × 4 scopes = 16 combinations)
 - America: No impact — skills internal to Copilot pipeline
+
+### 2026-02-22: Phase 3 Transformation & PR Design (WI-14)
+
+**Key Files:**
+- `docs/design/phase3-transformation-pr.md` — Full design document for Phase 3 implementers
+- `.squad/decisions/inbox/kamala-phase3-design.md` — Decision record (7 decisions)
+
+**Architecture Decisions:**
+1. **Separate code and docs transformation services** — `ICodeTransformationService` (code, project files, config) and `IDocumentationTransformationService` (markdown/prose). Different Copilot prompt strategies; different failure severity; separate mocks for testing.
+2. **Per-file TransformationResult** — Each file produces its own result with Success/Failure, content, error, token count. `TransformationSummary` aggregates. Enables partial success PRs.
+3. **Sequential Copilot calls** — Not parallel. Rate limits unknown. Sequential is safe. Parallelism deferred to production observation.
+4. **Git Data API for commits** — Blobs → trees → commits → refs. No local clone. Remote-first. Multi-commit branches without push.
+5. **Branch recreate on retry** — Delete and recreate from current HEAD. No merge commits on automation-owned branches.
+6. **Failed files excluded from PR** — Only successfully transformed files committed. Failures listed in PR description table.
+7. **UpgradeOrchestrator** — Single entry point (`IUpgradeOrchestrator.ExecuteAsync`) orchestrates full pipeline: intent → analysis → transformation → PR. Webhook handler stays thin.
+
+**New Models:** `TransformationResult`, `TransformationSummary`, `PullRequestResult`, `UpgradeResult`, `UpgradePhase`
+**New Interfaces:** `ICodeTransformationService`, `IDocumentationTransformationService`, `IPullRequestService`, `IUpgradeOrchestrator`
+
+**DI:** All Phase 3 services registered as `Scoped` to share `GitHubContentProvider` auth token cache per webhook scope.
+
+**Team Routing:**
+- Riri: WI-15 (`CodeTransformationService`), WI-16 (`DocumentationTransformationService`)
+- America: WI-17 (`PullRequestService`) — Git Data API, commit strategy, PR template
+- Kate: WI-19 (E2E tests) — Mock all four interfaces, use `UpgradeOrchestrator` as test entry point
+- Kamala: WI-22 (code review against this design)
+
+**Open Questions:**
+- Should docs transformer include related code files as Copilot context? (Token budget TBD by Riri)
+- PR description truncation for large workshops? (GitHub limit: 65536 chars)
+- Build validation (WI-18): proposed to run after draft PR creation, not before

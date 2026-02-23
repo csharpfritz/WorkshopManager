@@ -44,6 +44,14 @@ builder.Services.AddScoped<TechnologyDetector>();
 builder.Services.AddSingleton<IManifestParser, ManifestParser>();
 builder.Services.AddScoped<IWorkshopAnalyzer, WorkshopAnalyzer>();
 
+// PR Generation (WI-17)
+builder.Services.AddScoped<IPullRequestService, PullRequestService>();
+
+// Phase 3: Transformation & PR pipeline (WI-15, WI-16)
+builder.Services.AddScoped<ICodeTransformationService, CodeTransformationService>();
+builder.Services.AddScoped<IDocumentationTransformationService, DocumentationTransformationService>();
+builder.Services.AddScoped<IUpgradeOrchestrator, UpgradeOrchestrator>();
+
 // Health checks
 builder.Services.AddHealthChecks();
 

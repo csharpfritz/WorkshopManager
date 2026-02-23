@@ -218,3 +218,41 @@ All 135 tests passing. Team converged on three parallel streams:
 - **Riri (Backend Dev):** Implemented real GitHubContentProvider with Octokit v14.0.0 and scoped lifetime cascade
 
 **Outcome:** Full webhook → Parser → Analyzer → Copilot pipeline now operational. 124/124 unit tests + 11/11 integration tests passing. Phase 2 ready: release notes integration, Dependabot trigger, content transformation at scale.
+
+## 2026-02-22  WI-15/WI-16: Code & Documentation Transformation Services
+
+Implemented the Phase 3 transformation pipeline: code transformation, documentation transformation, and upgrade orchestrator.
+
+**New models (all matched design §2 exactly — files pre-existed from design scaffolding):**
+- TransformationResult.cs — per-file result with HasChanges computed property
+- TransformationSummary.cs — aggregate with Succeeded/Failed/Unchanged partitions
+- PullRequestResult.cs — PR creation outcome
+- UpgradeResult.cs + UpgradePhase enum — top-level orchestrator result
+
+**New service interfaces:**
+- ICodeTransformationService — batch code transformation with per-file isolation
+- IDocumentationTransformationService — separate prose transformation (design D1)
+- IUpgradeOrchestrator — top-level pipeline entry point
+- IPullRequestService — pre-existed (America's interface)
+
+**Service implementations:**
+- CodeTransformationService — sequential file processing, IRepositoryContentProvider for reads, ISkillResolver for prompt routing, ICopilotClient for transformation, try/catch per file
+- DocumentationTransformationService — same pattern as code but distinct service for different prompt strategy, separate testability, and independent evolution
+- UpgradeOrchestrator — analyze → partition → transform code → transform docs → aggregate → PR. Uses IRepositoryContentProvider.GetFileTreeAsync("HEAD") for commit resolution. PartitionItems filters by UpgradeScope and splits code vs docs.
+
+**Skill templates:**
+- upgrade-configuration.md — NEW. Covers appsettings, Docker, DevContainer, CI/CD, general YAML/JSON config. Separate from upgrade-project-file.md for finer-grained prompting.
+- Existing skills (upgrade-code-sample.md, upgrade-documentation.md, upgrade-project-file.md) unchanged.
+
+**DI registration (Program.cs):**
+- ICodeTransformationService → CodeTransformationService (scoped)
+- IDocumentationTransformationService → DocumentationTransformationService (scoped)
+- IUpgradeOrchestrator → UpgradeOrchestrator (scoped)
+- IPullRequestService NOT registered yet (America building implementation)
+
+**Key decisions:**
+- Orchestrator uses IRepositoryContentProvider instead of IGitHubClientService for HEAD resolution — avoids creating a new interface when the content provider already talks to GitHub
+- Both transformation services share identical per-file error isolation pattern per design §7.1
+- UpgradeOrchestrator.PartitionItems is a static helper matching design §5.1 pseudocode exactly
+
+**Build status:** Successful (1 pre-existing NU1510 warning only)
