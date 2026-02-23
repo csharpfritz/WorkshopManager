@@ -260,3 +260,28 @@ Implemented the Phase 3 transformation pipeline: code transformation, documentat
 📌 Team update (2026-02-23): Phase 3 design finalized by Kamala — 7 core decisions documented covering service separation (code vs docs), per-file results, sequential Copilot processing, Git Data API for multi-commit branches, branch recreate idempotency, failed file exclusion, and orchestrator as pipeline owner. IPullRequestService not registered yet (America building WI-17) — decision: UpgradeOrchestrator compiles but cannot be resolved until America ships IPullRequestService implementation. Open question for Kamala review: should SkillResolver route Configuration → upgrade-configuration.md instead of upgrade-project-file.md?
 
 📌 Team update (2026-02-23): Phase 3 test strategy completed by Kate — 80–115 test scenarios planned across unit/integration/E2E. Key decisions: FakeCopilotClient for integration tests (deterministic transforms vs current stub), partial PR on partial failure (recommendation: success + warning list), multi-module realistic fixture, .txt extension for code fixtures, E2E trait filtering. Open questions require Kamala input on orchestrator architecture details and product input on partial failure policy.
+
+## 2026-02-23  UpgradeOrchestrator Walkthrough Integration Tests
+
+Built debugger-friendly integration test harness for the full UpgradeOrchestrator pipeline.
+
+**New test infrastructure (tests/WorkshopManager.IntegrationTests/Helpers/):**
+- FakeCopilotClient — configurable `Func<string, CopilotContext, CopilotResponse>` handler, call tracking via `.Calls` list. Default returns content unchanged.
+- FakePullRequestService — records `LastSummary` and `CallCount`, returns configurable `PullRequestResult`.
+
+**Test class: UpgradeOrchestratorWalkthroughTests (3 tests):**
+1. `ExecuteAsync_FullPipeline_TransformsAllFilesAndCreatesPR` — seeds .csproj, Program.cs, instructions.md, .workshop.yml; fake Copilot returns net10.0-upgraded content; asserts all files have HasChanges=true, token counts tracked, PR created.
+2. `ExecuteAsync_OneFileFailsTransformation_ReturnsPartialSuccess` — Program.cs fails with "rate limit exceeded"; asserts partial success creates PR with changed files, failed file recorded in summary.
+3. `ExecuteAsync_AlreadyAtTargetVersion_ReportsNoChanges` — Copilot returns content unchanged; asserts pipeline fails with "No changes detected", no PR created, all files in Unchanged partition.
+
+**DI wiring pattern:**
+- WebApplicationFactory<Program> with ConfigureServices overrides
+- InMemoryContentProvider, FakeCopilotClient, FakePullRequestService registered as singletons to replace scoped production services
+- Real WorkshopAnalyzer, FileClassifier, TechnologyDetector, SkillResolver, CodeTransformationService, DocumentationTransformationService, UpgradeOrchestrator wired from Program.cs
+
+**Key observations:**
+- WorkshopAnalyzer convention-based detection correctly finds 3 items from InMemoryContentProvider (excludes .workshop.yml as Configuration type only if manifest doesn't claim it)
+- TransformationSummary.Succeeded partition uses HasChanges (content differs), not just Success flag
+- UpgradeOrchestrator returns Success=false with FailedPhase=Transformation when HasAnyChanges is false
+
+**Build/test status:** 14/14 integration tests pass. All 3 new tests green.
