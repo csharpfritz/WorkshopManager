@@ -256,3 +256,7 @@ Implemented the Phase 3 transformation pipeline: code transformation, documentat
 - UpgradeOrchestrator.PartitionItems is a static helper matching design §5.1 pseudocode exactly
 
 **Build status:** Successful (1 pre-existing NU1510 warning only)
+
+📌 Team update (2026-02-23): Phase 3 design finalized by Kamala — 7 core decisions documented covering service separation (code vs docs), per-file results, sequential Copilot processing, Git Data API for multi-commit branches, branch recreate idempotency, failed file exclusion, and orchestrator as pipeline owner. IPullRequestService not registered yet (America building WI-17) — decision: UpgradeOrchestrator compiles but cannot be resolved until America ships IPullRequestService implementation. Open question for Kamala review: should SkillResolver route Configuration → upgrade-configuration.md instead of upgrade-project-file.md?
+
+📌 Team update (2026-02-23): Phase 3 test strategy completed by Kate — 80–115 test scenarios planned across unit/integration/E2E. Key decisions: FakeCopilotClient for integration tests (deterministic transforms vs current stub), partial PR on partial failure (recommendation: success + warning list), multi-module realistic fixture, .txt extension for code fixtures, E2E trait filtering. Open questions require Kamala input on orchestrator architecture details and product input on partial failure policy.

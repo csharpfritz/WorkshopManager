@@ -490,3 +490,197 @@ Build completed successfully with no errors.
 - Phase 1 complete: Full webhook → Parser → Analyzer → Copilot pipeline wired
 - Real GitHub API integration ready for Phase 2 (release notes, Dependabot)
 - Scoped lifetime cascade: GitHubContentProvider → TechnologyDetector → WorkshopAnalyzer
+
+
+# Decision: Phase 3 Transformation & PR Architecture (WI-14)
+
+**Author:** Kamala (Lead)  
+**Date:** 2026-02-22  
+**Status:** Proposed  
+**Design Document:** `docs/design/phase3-transformation-pr.md`
+
+---
+
+## Decisions
+
+### D1: Separate Code and Documentation Transformation Services
+**What:** Two interfaces — `ICodeTransformationService` (code, project files, config) and `IDocumentationTransformationService` (markdown/prose). Not one unified service.  
+**Why:** Different Copilot prompt strategies, different context window needs (docs may include related code snippets), different failure severity. Separate services = separate mocks for testing.
+
+### D2: TransformationResult Per File
+**What:** Each file produces an individual `TransformationResult`. `TransformationSummary` aggregates all results.  
+**Why:** Per-file granularity enables partial success reporting in the PR description, per-file retry (future), and accurate token accounting.
+
+### D3: Sequential Copilot Calls
+**What:** Files are transformed one at a time, not in parallel.  
+**Why:** Copilot rate limits are not documented. Sequential is safe and debuggable. Controlled parallelism (e.g., `SemaphoreSlim(3)`) can be introduced after observing production behavior.
+
+### D4: Git Data API for Multi-Commit Branches
+**What:** Use Git Data API (blobs → trees → commits → refs) instead of push-based flow.  
+**Why:** No local clone needed (remote-first principle from Phase 2). Precise control over multi-commit structure. Azure Functions compatible.
+
+### D5: Branch Recreate on Retry
+**What:** If `workshop-upgrade/{issue}-{version}` branch exists, delete and recreate from current default branch HEAD.  
+**Why:** Ensures clean state. Avoids merge commits on automation-owned branches.
+
+### D6: Failed Files Excluded from PR
+**What:** Files that fail Copilot transformation are NOT committed. They appear in the PR description failure table.  
+**Why:** Committing unchanged originals misleads reviewers. Committing broken output is worse. Clean separation: PR = validated changes only.
+
+### D7: UpgradeOrchestrator as Pipeline Owner
+**What:** Single `IUpgradeOrchestrator` service orchestrates intent → analysis → transformation → PR.  
+**Why:** Webhook handler stays thin. Orchestrator is testable, composable, single entry point.
+
+---
+
+## Impact
+
+| Agent | Impact |
+|-------|--------|
+| **Riri** | Implements `ICodeTransformationService` (WI-15) and `IDocumentationTransformationService` (WI-16) per interfaces defined in design doc. |
+| **America** | Implements `IPullRequestService` (WI-17) using Git Data API. Branch naming, commit strategy, PR template all specified. |
+| **Kate** | Can mock all four service interfaces for E2E tests (WI-19). `UpgradeOrchestrator` is the test entry point. |
+| **Kamala** | Reviews implementations against this design in WI-22. |
+
+## New Models
+- `TransformationResult` — per-file outcome
+- `TransformationSummary` — aggregate with computed Succeeded/Failed/Unchanged
+- `PullRequestResult` — PR creation outcome
+- `UpgradeResult` + `UpgradePhase` — top-level orchestrator result
+
+## New Interfaces
+- `ICodeTransformationService`
+- `IDocumentationTransformationService`
+- `IPullRequestService`
+- `IUpgradeOrchestrator`
+
+## DI Registration
+All Phase 3 services: `Scoped` lifetime (matches `GitHubContentProvider` token caching).
+
+
+# Decision: Phase 3 Test Strategy
+
+> **From:** Kate (Tester)  
+> **Date:** 2026-02-22  
+> **Status:** Proposed  
+> **Affects:** Phase 3 — Transformation & PR Generation
+
+---
+
+## Decisions Proposed
+
+### 1. FakeCopilotClient for Integration Tests (not StubCopilotClient)
+
+**What:** Integration tests should use a new `FakeCopilotClient` that performs deterministic string-replacement transformations, records calls, and supports failure injection — rather than the existing `StubCopilotClient` which returns content unchanged.
+
+**Why:** `StubCopilotClient` is a pass-through. It can't verify that the orchestrator actually sends the right content, in the right order, with the right context. A `FakeCopilotClient` that does predictable version-string replacement lets us assert on actual transformed output in integration tests without depending on the real Copilot API.
+
+**Impact:** New test helper class. Does not affect production code.
+
+### 2. Partial PR on Partial Failure — Need Team Decision
+
+**What:** When some files fail Copilot transformation (e.g., API error on 2 of 5 files), should we:
+- (a) Create a PR with only the successful transformations + warning list, or
+- (b) Block the entire PR and comment on the issue?
+
+**My recommendation:** Option (a) — partial PR with warnings. Authors can review what worked and manually handle the rest. A blocked PR gives them nothing.
+
+**Needs input from:** Kamala (architecture), Jeffrey (product)
+
+### 3. Test Fixture: Realistic Multi-Module Workshop
+
+**What:** Phase 3 tests need a sample workshop fixture with 3 modules, `.csproj` files, Markdown instructions, config files, and a `.workshop.yml` manifest — representing a real .NET 8 → .NET 9 upgrade.
+
+**Why:** Toy examples (single file) miss real-world complexity: module grouping, cross-file version consistency, mixed content types. The fixture should be reviewed by Jeffrey to ensure it mirrors his actual workshops.
+
+**Impact:** New fixtures in `tests/WorkshopManager.UnitTests/Fixtures/`. Reusable across unit and integration tests.
+
+### 4. Use `.txt` Extension for Code Fixtures
+
+**What:** Code sample fixtures (e.g., `Program.cs` content) should use `.cs.txt` extension, not `.cs`, to prevent the IDE/build from treating them as compilable source.
+
+**Why:** Existing pattern — Phase 2 fixtures already use `sample.csproj.txt` and `sample-package.json.txt`. Consistency prevents accidental compilation.
+
+### 5. Trait-Based Test Filtering for E2E Tests
+
+**What:** End-to-end tests (full webhook → PR pipeline with HTTP fixtures) should be tagged `[Trait("Category", "E2E")]` and excluded from the default `dotnet test` run.
+
+**Why:** E2E tests are slow and brittle. CI should run unit + integration by default, with E2E as a separate pipeline stage. This matches the existing dual-project pattern (unit tests fast, integration tests boot full app).
+
+---
+
+## Open Questions for Team
+
+1. Is there a single `ITransformationOrchestrator` interface planned, or does the webhook handler call `ICopilotClient` per-file? Test structure depends on this.
+2. Will retry/backoff for Copilot API use Polly policies on `HttpClient`, or custom logic in `CopilotClient`? Determines mocking approach for rate limit tests.
+3. Is there a token budget tracker service planned? Affects how we test "stop after exceeding budget" behavior.
+4. Should `IPullRequestService` be a new abstraction wrapping Octokit, or do we test against Octokit interfaces directly?
+
+
+# Decision: Phase 3 Transformation Service Implementation
+**By:** Riri  
+**Date:** 2026-02-22  
+**Work Items:** WI-15, WI-16
+
+## Decisions Made
+
+### D1: Orchestrator uses IRepositoryContentProvider instead of IGitHubClientService
+**What:** The design §5.1 pseudocode references `IGitHubClientService.GetDefaultBranchHeadAsync` which doesn't exist. Instead of creating a new interface, the orchestrator uses `IRepositoryContentProvider.GetFileTreeAsync(repo, "HEAD")` to validate repo access and passes "HEAD" as the commit SHA.
+**Why:** IRepositoryContentProvider already talks to GitHub and resolves refs. Adding a separate IGitHubClientService for a single method would mean a new interface, new implementation, and new DI registration — all for something the content provider already handles. When a real commit SHA resolution is needed (e.g., for idempotent retry), IGitHubClientService can be introduced then.
+**Impact:** UpgradeOrchestrator has one fewer dependency. No new unimplemented interfaces.
+
+### D2: IPullRequestService not registered in DI
+**What:** The IPullRequestService interface exists but has no implementation yet (America is building it in WI-17). It is NOT registered in DI.
+**Why:** Registering without an implementation would fail at resolve time regardless. The UpgradeOrchestrator compiles and is registered, but cannot be resolved until IPullRequestService has an implementation registered.
+**Impact:** America must register `IPullRequestService → PullRequestService` in Program.cs when WI-17 ships.
+
+### D3: upgrade-configuration.md created as separate skill
+**What:** Created a new `upgrade-configuration.md` skill template alongside the existing `upgrade-project-file.md`.
+**Why:** Configuration files (Dockerfiles, devcontainer.json, CI/CD workflows, appsettings) have different concerns than project files (.csproj, package.json). A dedicated skill lets Copilot focus on config-specific patterns. The SkillResolver still routes Configuration → upgrade-project-file.md per design §8.3. The new skill is available for future routing refinement.
+**Impact:** No runtime behavior change. The skill file is deployed to output directory via existing `Skills\*.md` wildcard in .csproj.
+
+## For Kamala to Review
+- Should we update SkillResolver to route `ContentItemType.Configuration` → `upgrade-configuration.md` instead of `upgrade-project-file.md`?
+- The orchestrator's "HEAD" commit SHA approach works but loses the idempotency guarantee from §6.4. When should we add proper SHA resolution?
+
+
+# Decision: WI-17 PR Generation Service Implementation
+
+**Author:** America (Frontend Dev)  
+**Date:** 2026-02-22  
+**Status:** Implemented
+
+## What Was Built
+
+IPullRequestService interface and PullRequestService implementation for creating multi-commit PRs from transformation results via the GitHub Git Data API.
+
+## Key Decisions
+
+1. **Auth pattern reused from GitHubContentProvider** — JWT generation and installation token caching follow the exact same pattern. If we refactor auth into a shared service later, both classes benefit.
+
+2. **Branch naming includes technology slug** — Per design §6.1: `workshop-upgrade/{issue}-{tech}-{version}`. This prevents collisions across forks or multiple upgrade types.
+
+3. **Idempotency via delete-and-recreate** — Per design D5: if branch exists, delete it and recreate from current default branch HEAD. Existing PR gets its title/body updated rather than creating a duplicate.
+
+4. **Labels are auto-created if missing** — The service creates `workshop-upgrade`, `automated`, and technology labels with a default color if they don't exist. Failures to create labels are logged as warnings but don't fail the PR.
+
+5. **Placeholder models created** — TransformationResult, TransformationSummary, PullRequestResult, and UpgradeResult were created matching the design doc exactly. Riri is building these in parallel; if her versions land first, reconcile by keeping whichever matches the design spec.
+
+## Files Created
+
+- `src/WorkshopManager.Api/Models/TransformationResult.cs`
+- `src/WorkshopManager.Api/Models/TransformationSummary.cs`
+- `src/WorkshopManager.Api/Models/PullRequestResult.cs`
+- `src/WorkshopManager.Api/Models/UpgradeResult.cs`
+- `src/WorkshopManager.Api/Services/IPullRequestService.cs`
+- `src/WorkshopManager.Api/Services/PullRequestService.cs`
+
+## Files Modified
+
+- `src/WorkshopManager.Api/Program.cs` — Added Scoped DI registration for IPullRequestService
+
+## Coordination Notes
+
+- Models match design doc §2 verbatim. If Riri's versions differ, the design doc is the source of truth.
+- BuildBranchName and BuildPrBody are `internal static` for testability — Kate can test them directly.
+
